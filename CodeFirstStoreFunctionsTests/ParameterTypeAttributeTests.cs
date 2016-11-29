@@ -25,6 +25,5 @@ namespace CodeFirstStoreFunctions
         {
             Assert.Equal("abc", new ParameterTypeAttribute { StoreType = "abc" }.StoreType);
         }
-
     }
 }

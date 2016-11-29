@@ -25,7 +25,7 @@ namespace CodeFirstStoreFunctions
 
     public class Airport_ResultType
     {
-        public string IATACode { get; set; }
+        public string IATACodeCustomMappedCol { get; set; }
         public string CityCode { get; set; }
         public string CountryCode { get; set; }
         public string Name { get; set; }
@@ -57,7 +57,7 @@ namespace CodeFirstStoreFunctions
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Airport>().Property(a => a.IATACode).IsFixedLength().IsUnicode().HasMaxLength(3);
+            modelBuilder.Entity<Airport>().Property(a => a.IATACode).HasColumnName("IATACodeCustomMappedCol").IsFixedLength().IsUnicode().HasMaxLength(3);
             modelBuilder.Entity<Airport>().Property(a => a.CityCode).IsFixedLength().IsUnicode().HasMaxLength(3);
             modelBuilder.Entity<Airport>().Property(a => a.CountryCode).IsFixedLength().IsUnicode().HasMaxLength(2);
 
@@ -303,7 +303,7 @@ namespace CodeFirstStoreFunctions
                 " (@CountryCode nchar(3)) " +
                 "RETURNS TABLE " +
                 "RETURN " +
-                "SELECT [IATACode], " +
+                "SELECT [IATACodeCustomMappedCol], " +
                 "   [CityCode], " +
                 "   [CountryCode], " +
                 "   [Name], " +
@@ -317,7 +317,7 @@ namespace CodeFirstStoreFunctions
                 " (@CountryCode nchar(3)) " +
                 "RETURNS TABLE " +
                 "RETURN " +
-                "SELECT [IATACode], " +
+                "SELECT [IATACodeCustomMappedCol], " +
                 "   [CityCode], " +
                 "   [CountryCode], " +
                 "   [Name], " +
@@ -365,7 +365,7 @@ namespace CodeFirstStoreFunctions
 
             context.Database.ExecuteSqlCommand(
                 "CREATE PROCEDURE [dbo].[GetAirports_ComplexTypeSP] @CountryCode nchar(3) AS " +
-                "SELECT [IATACode], " +
+                "SELECT [IATACodeCustomMappedCol], " +
                 "   [CityCode], " +
                 "   [CountryCode], " +
                 "   [Name], " +
@@ -375,7 +375,7 @@ namespace CodeFirstStoreFunctions
 
             context.Database.ExecuteSqlCommand(
                 "CREATE PROCEDURE [dbo].[GetAirportsSP] @CountryCode nchar(2) AS " +
-                "SELECT [IATACode], " +
+                "SELECT [IATACodeCustomMappedCol], " +
                 "   [CityCode], " +
                 "   [CountryCode], " +
                 "   [Name], " +
@@ -406,13 +406,13 @@ namespace CodeFirstStoreFunctions
 
             context.Database.ExecuteSqlCommand(
                 "CREATE PROCEDURE [dbo].[MultipleResultSets] AS " +
-                "SELECT [IATACode], " +
+                "SELECT [IATACodeCustomMappedCol], " +
                 "   [CityCode], " +
                 "   [CountryCode], " +
                 "   [Name], " +
                 "   [TerminalCount] " +
                 "FROM [dbo].[Airports] " +
-                "SELECT [IATACode], " +
+                "SELECT [IATACodeCustomMappedCol], " +
                 "   [CityCode], " +
                 "   [CountryCode], " +
                 "   [Name], " +
@@ -489,7 +489,7 @@ namespace CodeFirstStoreFunctions
 
                 const string expectedSql = @"SELECT 
     1 AS [C1], 
-    [Extent1].[IATACode] AS [IATACode], 
+    [Extent1].[IATACodeCustomMappedCol] AS [IATACodeCustomMappedCol], 
     [Extent1].[CityCode] AS [CityCode], 
     [Extent1].[CountryCode] AS [CountryCode], 
     [Extent1].[Name] AS [Name], 
@@ -501,8 +501,8 @@ namespace CodeFirstStoreFunctions
 
                 var result = query.ToList();
 
-                Assert.Equal(1, result.Count());
-                Assert.Equal("WRO", result[0].IATACode);
+                Assert.Equal(1, result.Count);
+                Assert.Equal("WRO", result[0].IATACodeCustomMappedCol);
                 Assert.Equal("WRO", result[0].CityCode);
                 Assert.Equal("PL", result[0].CountryCode);
                 Assert.Equal(2, result[0].TerminalCount);
@@ -520,7 +520,7 @@ namespace CodeFirstStoreFunctions
                 var sql = ((ObjectQuery)query).ToTraceString();
 
                 const string expectedSql = @"SELECT 
-    [Extent1].[IATACode] AS [IATACode], 
+    [Extent1].[IATACodeCustomMappedCol] AS [IATACodeCustomMappedCol], 
     [Extent1].[CityCode] AS [CityCode], 
     [Extent1].[CountryCode] AS [CountryCode], 
     [Extent1].[Name] AS [Name], 
@@ -533,7 +533,7 @@ namespace CodeFirstStoreFunctions
 
                 var result = query.ToList();
 
-                Assert.Equal(2, result.Count());
+                Assert.Equal(2, result.Count);
                 Assert.Equal("LHR", result[0].IATACode);
                 Assert.Equal("LTN", result[1].IATACode);
             }
@@ -557,7 +557,7 @@ namespace CodeFirstStoreFunctions
 
                 var result = query.ToList();
 
-                Assert.Equal(4, result.Count());
+                Assert.Equal(4, result.Count);
                 Assert.True(result.All(r => r == AirportType.International));
             }
         }
@@ -614,7 +614,7 @@ namespace CodeFirstStoreFunctions
                 var result = ctx.GetAirports_ComplexTypeSP("PL").ToList();
 
                 Assert.Equal(1, result.Count);
-                Assert.Equal("WRO", result[0].IATACode);
+                Assert.Equal("WRO", result[0].IATACodeCustomMappedCol);
             }
         }
 
@@ -637,7 +637,7 @@ namespace CodeFirstStoreFunctions
             {
                 var result = ctx.GetAirportTypeSP(AirportType.International).ToList();
 
-                Assert.Equal(4, result.Count());
+                Assert.Equal(4, result.Count);
                 Assert.True(result.All(r => r == AirportType.International));
             }
         }
@@ -732,7 +732,7 @@ namespace CodeFirstStoreFunctions
         {
             const string expectedSql =
                 @"SELECT 
-    [Extent1].[IATACode] AS [IATACode], 
+    [Extent1].[IATACodeCustomMappedCol] AS [IATACodeCustomMappedCol], 
     [Extent1].[CityCode] AS [CityCode], 
     [Extent1].[CountryCode] AS [CountryCode], 
     [Extent1].[Name] AS [Name], 
@@ -759,11 +759,11 @@ namespace CodeFirstStoreFunctions
     [Extent1].[ProductionDate] AS [ProductionDate], 
     [Extent1].[Code] AS [Code]
     FROM [dbo].[Vehicles] AS [Extent1]
-    WHERE ([Extent1].[Discriminator] IN (N'Aircraft',N'Vehicle')) AND (N'1929. 12. 07.' = (FORMAT([Extent1].[ProductionDate], N'd', N'hu-hu')))";
+    WHERE ([Extent1].[Discriminator] IN (N'Aircraft',N'Vehicle')) AND (N'1929.12.07.' = (FORMAT([Extent1].[ProductionDate], N'd', N'hu-hu')))";
 
             using (var ctx = new MyContext())
             {
-                var q = ctx.Vehicles.Where(v => MyContext.Format(v.ProductionDate, "d", "hu-hu") == "1929. 12. 07.");
+                var q = ctx.Vehicles.Where(v => MyContext.Format(v.ProductionDate, "d", "hu-hu") == "1929.12.07.");
                 Assert.Equal(expectedSql, q.ToString());
                 Assert.Equal(1, q.Count());
             }

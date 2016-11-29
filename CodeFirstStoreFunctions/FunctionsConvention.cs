@@ -3,6 +3,8 @@
 namespace CodeFirstStoreFunctions
 {
     using System;
+    using System.Collections.Generic;
+    using System.Collections.ObjectModel;
     using System.Data.Entity.Core.Mapping;
     using System.Data.Entity.Core.Metadata.Edm;
     using System.Data.Entity.Infrastructure;
@@ -36,21 +38,70 @@ namespace CodeFirstStoreFunctions
                     var functionImportDefinition = CreateFunctionImport(model, functionDescriptor);
                     model.ConceptualModel.Container.AddFunctionImport(functionImportDefinition);
 
+                    List<FunctionImportResultMapping> resultMappings = new List<FunctionImportResultMapping>();
+                    if (functionDescriptor.ReturnTypes.All(t => t is EntityType || t is ComplexType))
+                    {
+                        foreach (EdmType returnType in functionDescriptor.ReturnTypes)
+                        {
+                            FunctionImportStructuralTypeMapping typeMapping;
+                            if (returnType is EntityType)
+                            {
+                                var entityType = (EntityType)returnType;
+
+                                var returnTypePropertyMappings = new Collection<FunctionImportReturnTypePropertyMapping>();
+                                foreach (var propertyMapping in model.GetEntityTypePropertyMappings(entityType).OfType<ScalarPropertyMapping>())
+                                {
+                                    returnTypePropertyMappings.Add(new FunctionImportReturnTypeScalarPropertyMapping(propertyMapping.Property.Name, propertyMapping.Column.Name));
+                                }
+
+                                typeMapping = new FunctionImportEntityTypeMapping(
+                                    Enumerable.Empty<EntityType>(),
+                                    new[] { entityType },
+                                    returnTypePropertyMappings,
+                                    Enumerable.Empty<FunctionImportEntityTypeMappingCondition>());
+                            }
+                            else // ComplexType
+                            {
+                                var complexType = (ComplexType)returnType;
+
+                                var returnTypePropertyMappings = new Collection<FunctionImportReturnTypePropertyMapping>();
+                                foreach (var property in complexType.Properties)
+                                {
+                                    returnTypePropertyMappings.Add(new FunctionImportReturnTypeScalarPropertyMapping(property.Name, property.Name));
+                                }
+
+                                typeMapping = new FunctionImportComplexTypeMapping(complexType, returnTypePropertyMappings);
+                            }
+
+                            FunctionImportResultMapping resultMapping = new FunctionImportResultMapping();
+                            resultMappings.Add(resultMapping);
+                            resultMapping.AddTypeMapping(typeMapping);
+                        }
+                    }
+
                     if (functionImportDefinition.IsComposableAttribute)
                     {
                         model.ConceptualToStoreMapping.AddFunctionImportMapping(
                             new FunctionImportMappingComposable(
                                 functionImportDefinition,
                                 storeFunctionDefinition,
-                                new FunctionImportResultMapping(),
+                                resultMappings.FirstOrDefault() ?? new FunctionImportResultMapping(),
                                 model.ConceptualToStoreMapping));
                     }
                     else
                     {
+                        // HACK: Currently, FunctionImportMappingNonComposable ctor does not support code-first construction because
+                        //       it depends on EdmItemCollection being available from StorageMappingItemCollection. Code-first does
+                        //       not create a StorageMappingItemCollection and, as a result, this ctor will throw a null reference
+                        //       exception if any result mappings are passed to it in code-first context. This must be resolved in
+                        //       EF itself. Until then, _only composable functions can support custom named column mappings_. Once
+                        //       this issue is resolved in EF then the commented code should replace the current "empty array" 
+                        //       resultMapping parameter to enable custom mappings for non-composable functions as well:
                         model.ConceptualToStoreMapping.AddFunctionImportMapping(
                             new FunctionImportMappingNonComposable(
                                 functionImportDefinition,
                                 storeFunctionDefinition,
+                                // resultMappings.Any() ? resultMappings.ToArray() : new FunctionImportResultMapping[0],
                                 new FunctionImportResultMapping[0],
                                 model.ConceptualToStoreMapping));
                     }

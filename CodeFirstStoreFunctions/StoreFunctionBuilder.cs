@@ -103,11 +103,7 @@ namespace CodeFirstStoreFunctions
         {
             if (edmType.BuiltInTypeKind == BuiltInTypeKind.EntityType)
             {
-                var propertyToSoreTypeUsage = FindStoreTypeUsages((EntityType)edmType);
-                return
-                    RowType.Create(
-                        ((EntityType) edmType).Properties.Select(
-                            m => EdmProperty.Create(m.Name, propertyToSoreTypeUsage[m])), null);
+                return CreateRowTypeFromEntityType((EntityType)edmType);
             }
 
             if (edmType.BuiltInTypeKind == BuiltInTypeKind.ComplexType)
@@ -134,42 +130,41 @@ namespace CodeFirstStoreFunctions
                     }, null);
         }
 
-        private Dictionary<EdmProperty, TypeUsage> FindStoreTypeUsages(EntityType entityType)
+        private RowType CreateRowTypeFromEntityType(EntityType entityType)
         {
             Debug.Assert(entityType != null, "entityType == null");
 
-            var propertyToStoreTypeUsage = new Dictionary<EdmProperty, TypeUsage>();
-			
             var types = Tools.GetTypeHierarchy(entityType);
-            var entityTypeMappings = 
+            var entityTypeMappings =
                 _model.ConceptualToStoreMapping.EntitySetMappings
                     .SelectMany(s => s.EntityTypeMappings)
                     .Where(t => types.Contains(t.EntityType))
                         .ToArray();
 
+            List<EdmProperty> rowTypeProperties = new List<EdmProperty>();
             foreach (var property in entityType.Properties)
             {
                 foreach (var entityTypeMapping in entityTypeMappings)
-                { 
+                {
                     var propertyMapping =
                         (ScalarPropertyMapping)entityTypeMapping.Fragments.SelectMany(f => f.PropertyMappings)
                         .FirstOrDefault(p => p.Property == property);
 
                     if (propertyMapping != null)
                     {
-                        Debug.Assert(!propertyToStoreTypeUsage.ContainsKey(property), "Property already in dictionary");
-
-                        propertyToStoreTypeUsage[property] = TypeUsage.Create(
-                            propertyMapping.Column.TypeUsage.EdmType,
-                            propertyMapping.Column.TypeUsage.Facets.Where(
-                                f => f.Name != "StoreGeneratedPattern" && f.Name != "ConcurrencyMode"));
+                        // we must use the column name and not just the name of the property to support custom column mappings
+                        rowTypeProperties.Add(EdmProperty.Create(propertyMapping.Column.Name,
+                            TypeUsage.Create(
+                                propertyMapping.Column.TypeUsage.EdmType,
+                                propertyMapping.Column.TypeUsage.Facets.Where(
+                                    f => f.Name != "StoreGeneratedPattern" && f.Name != "ConcurrencyMode"))));
 
                         break;
                     }
                 }
             }
 
-            return propertyToStoreTypeUsage;
+            return RowType.Create(rowTypeProperties, null);
         }
 
         private TypeUsage GetStorePrimitiveTypeUsage(TypeUsage typeUsage)
